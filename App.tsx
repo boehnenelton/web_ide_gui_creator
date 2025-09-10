@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
-import { Control, ControlType, Ripple, MenuItem, FormState, FormProperties, ControlProperties, ApiKeyMap } from './types';
+// FIX: Removed ApiKeyMap as it's no longer used.
+import { Control, ControlType, Ripple, MenuItem, FormState, FormProperties, ControlProperties } from './types';
 import CodeEditor from './components/CodeEditor';
 import { enhanceCodeWithAI } from './services/geminiService';
-import { CodeIcon, TrashIcon, PlusIcon, WandIcon, GridIcon, MagnetIcon, CalendarIcon, LockIcon, UnlockIcon, SettingsIcon, CopyIcon, SaveIcon, MenuIcon, XIcon } from './components/icons';
-import { keyTemplate, serviceDetails } from './data/keyTemplate';
-import SettingsModal from './components/SettingsModal';
+// FIX: Removed SettingsIcon as the settings modal is no longer used.
+import { CodeIcon, TrashIcon, PlusIcon, WandIcon, GridIcon, MagnetIcon, CalendarIcon, LockIcon, UnlockIcon, CopyIcon, SaveIcon, MenuIcon, XIcon } from './components/icons';
+// FIX: Removed imports related to API key management UI.
 
 // --- LOCAL CODE GENERATOR (PowerShell) ---
 const generatePowerShellMenuScript = (menuItems: MenuItem[], parentVar: string): string => {
@@ -489,8 +490,8 @@ const App = () => {
   const [currentFormIndex, setCurrentFormIndex] = useState(0);
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'properties' | 'events' | 'menu' | 'code'>('properties');
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [isMouseInForm, setIsMouseInForm] = useState(false);
+  const [pointerPos, setPointerPos] = useState({ x: 0, y: 0 });
+  const [isPointerInForm, setIsPointerInForm] = useState(false);
   const [ripples, setRipples] = useState<Ripple[]>([]);
   const [generatedCode, setGeneratedCode] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
@@ -503,8 +504,7 @@ const App = () => {
   const [isFormLocked, setIsFormLocked] = useState(true);
   const [clipboard, setClipboard] = useState<Control[] | null>(null);
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 });
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [apiKeys, setApiKeys] = useState<ApiKeyMap>({});
+  // FIX: Removed state related to API key management UI.
   const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [copyStatus, setCopyStatus] = useState('Copy');
   const [potentialParentId, setPotentialParentId] = useState<string | null>(null);
@@ -515,8 +515,8 @@ const App = () => {
   
   type DragState = {
     mode: 'move' | 'resize';
-    draggedItemId: string; // The specific item the mouse is on
-    startMouse: { x: number; y: number };
+    draggedItemId: string; // The specific item the pointer is on
+    startPointer: { x: number; y: number };
     items: Array<{
       id: string;
       startPos: { X: number; Y: number };
@@ -528,7 +528,7 @@ const App = () => {
   const splitterDragState = useRef<{
     isResizing: boolean;
     controlId: string;
-    startMouse: { x: number; y: number };
+    startPointer: { x: number; y: number };
     startDistance: number;
   } | null>(null);
   const panelResizeDragState = useRef<{ isResizing: boolean; startY: number; startHeight: number; } | null>(null);
@@ -626,9 +626,9 @@ const App = () => {
   }, [selectedItemIds, currentFormIndex, forms, getDescendants]);
   
   useEffect(() => {
-    const handleMouseDown = () => setContextMenu(c => ({ ...c, visible: false }));
-    window.addEventListener('mousedown', handleMouseDown);
-    return () => window.removeEventListener('mousedown', handleMouseDown);
+    const handlePointerDown = () => setContextMenu(c => ({ ...c, visible: false }));
+    window.addEventListener('pointerdown', handlePointerDown);
+    return () => window.removeEventListener('pointerdown', handlePointerDown);
   }, []);
   
   useEffect(() => {
@@ -677,28 +677,40 @@ const App = () => {
       }));
   };
   
-  // --- Mouse & Drag Handlers ---
+  // --- Pointer & Drag Handlers ---
+  // FIX: Changed event type from React.PointerEvent to React.MouseEvent to match onContextMenu handler signature.
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     setContextMenu({ visible: true, x: e.clientX, y: e.clientY });
   };
   
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!canvasRef.current) return;
+  const handlePointerMoveOnCanvas = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!canvasRef.current || dragState.current || splitterDragState.current || panelResizeDragState.current) return;
     const canvasRect = canvasRef.current.getBoundingClientRect();
     const x = e.clientX - canvasRect.left;
     const y = e.clientY - canvasRect.top;
     const formX = x - currentForm.properties.Location.X;
     const formY = y - currentForm.properties.Location.Y;
 
-    setMousePos({ x: formX, y: formY });
-    setIsMouseInForm(formX >= 0 && formX <= currentForm.properties.Size.Width && formY >= 0 && formY <= currentForm.properties.Size.Height);
+    setPointerPos({ x: formX, y: formY });
+    setIsPointerInForm(formX >= 0 && formX <= currentForm.properties.Size.Width && formY >= 0 && formY <= currentForm.properties.Size.Height);
+  };
+  
+  const handleDragMove = useCallback((e: PointerEvent) => {
+    if (!canvasRef.current) return;
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    const x = e.clientX - canvasRect.left;
+    const y = e.clientY - canvasRect.top;
+    const formX = x - currentForm.properties.Location.X;
+    const formY = y - currentForm.properties.Location.Y;
     
+    setPointerPos({ x: formX, y: formY });
+
     if (splitterDragState.current) {
       const control = currentForm.controls.find(c => c.id === splitterDragState.current!.controlId);
       if (control) {
-          const dx = e.clientX - splitterDragState.current.startMouse.x;
-          const dy = e.clientY - splitterDragState.current.startMouse.y;
+          const dx = e.clientX - splitterDragState.current.startPointer.x;
+          const dy = e.clientY - splitterDragState.current.startPointer.y;
           const change = control.properties.Orientation === 'Vertical' ? dx : dy;
           const newDistance = splitterDragState.current.startDistance + change;
           const max = control.properties.Orientation === 'Vertical' ? control.properties.Size.Width : control.properties.Size.Height;
@@ -709,8 +721,8 @@ const App = () => {
     }
 
     if (dragState.current) {
-        const dx = x - dragState.current.startMouse.x;
-        const dy = y - dragState.current.startMouse.y;
+        const dx = x - dragState.current.startPointer.x;
+        const dy = y - dragState.current.startPointer.y;
         
         const isFormDrag = dragState.current.draggedItemId.startsWith('form_');
 
@@ -793,126 +805,12 @@ const App = () => {
             dragState.current.isColliding = isCurrentlyColliding;
         }
     }
-  };
-  
-  const handleMouseDown = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    e.preventDefault();
-    if (contextMenu.visible) {
-      setContextMenu({ ...contextMenu, visible: false });
-    }
-    if (!canvasRef.current) return;
-    
-    const isForm = id.startsWith('form_');
-    const isCtrl = e.ctrlKey || e.metaKey;
-    let newSelectedIds: string[];
+  }, [forms, currentFormIndex, isSnapToGridEnabled, getAbsoluteControlPosition]);
 
-    if (isForm) {
-        if (isFormLocked) return; // FEATURE: Prevent form dragging if locked
-        newSelectedIds = [id];
-    } else if (isCtrl) {
-        newSelectedIds = selectedItemIds.includes(id) 
-            ? selectedItemIds.filter(sid => sid !== id)
-            : [...selectedItemIds, id];
-    } else {
-        newSelectedIds = selectedItemIds.includes(id) ? selectedItemIds : [id];
-    }
-    
-    setSelectedItemIds(newSelectedIds);
-    if (!isForm) setActiveTab('properties');
-
-    const canvasRect = canvasRef.current.getBoundingClientRect();
-    const canvasMouseX = e.clientX - canvasRect.left;
-    const canvasMouseY = e.clientY - canvasRect.top;
-    addRipple(canvasMouseX, canvasMouseY, 'wormhole');
-    
-    if (isForm) {
-        const form = forms.find(f => f.id === id);
-        if (!form) return;
-        dragState.current = {
-            mode: 'move',
-            draggedItemId: id,
-            startMouse: { x: canvasMouseX, y: canvasMouseY },
-            isColliding: false,
-            items: [{
-                id: form.id,
-                startPos: { ...form.properties.Location },
-                startSize: { ...form.properties.Size }
-            }]
-        };
-    } else {
-        const itemsToDrag = currentForm.controls.filter(c => newSelectedIds.includes(c.id));
-        const descendants = itemsToDrag.flatMap(c => getDescendants(c.id, currentForm.controls));
-        const allItems = [...new Set([...itemsToDrag, ...descendants])];
-        
-        dragState.current = {
-            mode: 'move',
-            draggedItemId: id,
-            startMouse: { x: canvasMouseX, y: canvasMouseY },
-            isColliding: false,
-            items: allItems.map(c => ({
-                id: c.id,
-                startPos: { ...c.properties.Location },
-                startSize: { ...c.properties.Size }
-            }))
-        };
-    }
-  };
-
-  const handleResizeMouseDown = (e: React.MouseEvent, id: string) => {
-      e.stopPropagation();
-      e.preventDefault();
-      if (!canvasRef.current) return;
-
-      const control = currentForm.controls.find(c => c.id === id);
-      if (!control) {
-        console.error("Resize failed: Control not found", id);
-        return;
-      }
-      
-      setSelectedItemIds([id]);
-      setActiveTab('properties');
-
-      const canvasRect = canvasRef.current.getBoundingClientRect();
-      const canvasMouseX = e.clientX - canvasRect.left;
-      const canvasMouseY = e.clientY - canvasRect.top;
-
-      dragState.current = { 
-        mode: 'resize',
-        draggedItemId: id,
-        startMouse: { x: canvasMouseX, y: canvasMouseY },
-        isColliding: false,
-        items: [{
-            id: control.id,
-            startPos: { ...control.properties.Location },
-            startSize: { ...control.properties.Size }
-        }]
-      };
-  };
-
-  const handleSplitterMouseDown = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    e.preventDefault();
-    const control = currentForm.controls.find(c => c.id === id);
-    if (!control || !canvasRef.current) return;
-
-    splitterDragState.current = {
-        isResizing: true,
-        controlId: id,
-        startMouse: { x: e.clientX, y: e.clientY },
-        startDistance: control.properties.SplitterDistance || 0,
-    };
-  };
-  
-  const handleMouseUp = (e: React.MouseEvent) => {
-    if (splitterDragState.current) {
-      splitterDragState.current = null;
-    }
+  const handleDragEnd = useCallback((e: PointerEvent) => {
     if (dragState.current) {
         setPotentialParentId(null);
         // Capture the ref's value in a local variable.
-        // The updater function for setForms will close over this variable,
-        // preventing a race condition where the ref is nulled before the updater runs.
         const currentDragState = dragState.current;
         const isFormDrag = currentDragState.draggedItemId.startsWith('form_');
         
@@ -995,14 +893,96 @@ const App = () => {
             }
         }
         
-        dragState.current = null;
         if (canvasRef.current) {
             const canvasRect = canvasRef.current.getBoundingClientRect();
             addRipple(e.clientX - canvasRect.left, e.clientY - canvasRect.top, 'ripple');
         }
     }
+    
+    // Universal cleanup for all drag types
+    dragState.current = null;
+    splitterDragState.current = null;
+    window.removeEventListener('pointermove', handleDragMove);
+    window.removeEventListener('pointerup', handleDragEnd);
+    window.removeEventListener('pointercancel', handleDragEnd);
+  }, [forms, currentFormIndex, getAbsoluteControlPosition]);
+  
+  const handlePointerDown = (e: React.PointerEvent, id: string, mode: 'move' | 'resize') => {
+    e.stopPropagation();
+    if (contextMenu.visible) {
+      setContextMenu({ ...contextMenu, visible: false });
+    }
+    if (!canvasRef.current) return;
+    
+    const isForm = id.startsWith('form_');
+    const isCtrl = e.ctrlKey || e.metaKey;
+    let newSelectedIds: string[];
+
+    if (isForm) {
+        if (isFormLocked) return;
+        newSelectedIds = [id];
+    } else if (isCtrl) {
+        newSelectedIds = selectedItemIds.includes(id) 
+            ? selectedItemIds.filter(sid => sid !== id)
+            : [...selectedItemIds, id];
+    } else {
+        newSelectedIds = selectedItemIds.includes(id) ? selectedItemIds : [id];
+    }
+    
+    setSelectedItemIds(newSelectedIds);
+    if (!isForm) setActiveTab('properties');
+
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    const canvasPointerX = e.clientX - canvasRect.left;
+    const canvasPointerY = e.clientY - canvasRect.top;
+    addRipple(canvasPointerX, canvasPointerY, 'wormhole');
+    
+    if (isForm) {
+        const form = forms.find(f => f.id === id);
+        if (!form) return;
+        dragState.current = {
+            mode: 'move',
+            draggedItemId: id,
+            startPointer: { x: canvasPointerX, y: canvasPointerY },
+            isColliding: false,
+            items: [{ id: form.id, startPos: { ...form.properties.Location }, startSize: { ...form.properties.Size } }]
+        };
+    } else {
+        const itemsToDrag = currentForm.controls.filter(c => newSelectedIds.includes(c.id));
+        const descendants = itemsToDrag.flatMap(c => getDescendants(c.id, currentForm.controls));
+        const allItems = [...new Set([...itemsToDrag, ...descendants])];
+        
+        dragState.current = {
+            mode,
+            draggedItemId: id,
+            startPointer: { x: canvasPointerX, y: canvasPointerY },
+            isColliding: false,
+            items: allItems.map(c => ({ id: c.id, startPos: { ...c.properties.Location }, startSize: { ...c.properties.Size } }))
+        };
+    }
+
+    window.addEventListener('pointermove', handleDragMove);
+    window.addEventListener('pointerup', handleDragEnd);
+    window.addEventListener('pointercancel', handleDragEnd);
   };
 
+  const handleSplitterPointerDown = (e: React.PointerEvent, id: string) => {
+    e.stopPropagation();
+    const control = currentForm.controls.find(c => c.id === id);
+    if (!control || !canvasRef.current) return;
+
+    splitterDragState.current = {
+        isResizing: true,
+        controlId: id,
+        startPointer: { x: e.clientX, y: e.clientY },
+        startDistance: control.properties.SplitterDistance || 0,
+    };
+
+    window.addEventListener('pointermove', handleDragMove);
+    window.addEventListener('pointerup', handleDragEnd);
+    window.addEventListener('pointercancel', handleDragEnd);
+  };
+  
   // --- Keyboard & Clipboard ---
   const handleArrowKeyMove = (key: string, isShift: boolean) => {
     if (selectedItemIds.length === 0) return;
@@ -1224,12 +1204,9 @@ const App = () => {
       setError(null);
       setIsGenerating(true);
       try {
-          const geminiKey = apiKeys['google_gemini'];
-          if (!geminiKey) {
-            throw new Error("Google Gemini API key is missing. Please import it via the settings menu.");
-          }
+          // FIX: API key is now handled by geminiService via environment variables.
           const prompt = `Base Code:\n\`\`\`${targetLanguage}\n${generatedCode}\n\`\`\`\n\nUser Request: ${enhancementPrompt}`;
-          const enhancedCode = await enhanceCodeWithAI(prompt, targetLanguage, geminiKey);
+          const enhancedCode = await enhanceCodeWithAI(prompt, targetLanguage);
           setGeneratedCode(enhancedCode);
       } catch (err) {
           setError(err instanceof Error ? err.message : 'An unknown AI error occurred.');
@@ -1280,7 +1257,7 @@ const App = () => {
   };
 
   // --- Panel Resizing ---
-  const handlePanelResizeMouseMove = useCallback((e: MouseEvent) => {
+  const handlePanelResizePointerMove = useCallback((e: PointerEvent) => {
       if (!panelResizeDragState.current?.isResizing) return;
       const dy = e.clientY - panelResizeDragState.current.startY;
       const newHeight = panelResizeDragState.current.startHeight - dy;
@@ -1289,72 +1266,22 @@ const App = () => {
       setPanelHeight(Math.max(minHeight, Math.min(newHeight, maxHeight)));
   }, []);
 
-  const handlePanelResizeMouseUp = useCallback(() => {
+  const handlePanelResizePointerUp = useCallback(() => {
       panelResizeDragState.current = null;
-      window.removeEventListener('mousemove', handlePanelResizeMouseMove);
-      window.removeEventListener('mouseup', handlePanelResizeMouseUp);
-  }, [handlePanelResizeMouseMove]);
+      window.removeEventListener('pointermove', handlePanelResizePointerMove);
+      window.removeEventListener('pointerup', handlePanelResizePointerUp);
+      window.removeEventListener('pointercancel', handlePanelResizePointerUp);
+  }, [handlePanelResizePointerMove]);
 
-  const handlePanelResizeMouseDown = (e: React.MouseEvent) => {
+  const handlePanelResizePointerDown = (e: React.PointerEvent) => {
       e.preventDefault();
       panelResizeDragState.current = { isResizing: true, startY: e.clientY, startHeight: panelHeight };
-      window.addEventListener('mousemove', handlePanelResizeMouseMove);
-      window.addEventListener('mouseup', handlePanelResizeMouseUp);
+      window.addEventListener('pointermove', handlePanelResizePointerMove);
+      window.addEventListener('pointerup', handlePanelResizePointerUp);
+      window.addEventListener('pointercancel', handlePanelResizePointerUp);
   };
   
-  useEffect(() => {
-    return () => {
-      if (panelResizeDragState.current?.isResizing) {
-        window.removeEventListener('mousemove', handlePanelResizeMouseMove);
-        window.removeEventListener('mouseup', handlePanelResizeMouseUp);
-      }
-    };
-  }, [handlePanelResizeMouseMove, handlePanelResizeMouseUp]);
-  
-  // --- Key Management ---
-  const handleExportKeyTemplate = () => {
-    const jsonString = JSON.stringify(keyTemplate, null, 2);
-    const blob = new Blob([jsonString], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "AIKeyVault_template.json";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleImportKeys = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const content = event.target?.result as string;
-        const data = JSON.parse(content);
-
-        if (data.format !== "AIKeyVault-JSON") {
-          throw new Error("Invalid key file format.");
-        }
-        
-        const newKeys: ApiKeyMap = {};
-        for (const serviceKey in data.services) {
-            const service = data.services[serviceKey];
-            if(service.keys && service.keys.length > 0 && service.keys[0]) {
-                newKeys[serviceKey] = service.keys[0];
-            }
-        }
-        setApiKeys(newKeys);
-        setError(null); // Clear previous errors
-        setIsSettingsModalOpen(false); // Close modal on success
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to parse key file.");
-      }
-    };
-    reader.onerror = () => {
-      setError("Failed to read the key file.");
-    };
-    reader.readAsText(file);
-  };
+  // FIX: Removed API key management functions (handleExportKeyTemplate, handleImportKeys)
   
   // --- RENDER ---
   const renderProperties = () => {
@@ -1653,7 +1580,7 @@ const App = () => {
                 </div>
                 <div className="splitcontainer-splitter" 
                      style={isVertical ? { left: splitterPos - 2, top: 0, width: 4, height: '100%', cursor: 'ew-resize' } : { top: splitterPos - 2, left: 0, height: 4, width: '100%', cursor: 'ns-resize' }}
-                     onMouseDown={(e) => handleSplitterMouseDown(e, c.id)}
+                     onPointerDown={(e) => handleSplitterPointerDown(e, c.id)}
                 />
             </div>
             break;
@@ -1691,9 +1618,9 @@ const App = () => {
     }
 
     return (
-        <div key={c.id} id={c.id} className={baseClasses} style={style} onMouseDown={e => handleMouseDown(e, c.id)}>
+        <div key={c.id} id={c.id} className={baseClasses} style={style} onPointerDown={e => handlePointerDown(e, c.id, 'move')}>
             {innerContent}
-            {isSelected && <div className="resize-handle" onMouseDown={(e) => handleResizeMouseDown(e, c.id)}></div>}
+            {isSelected && <div className="resize-handle" onPointerDown={(e) => handlePointerDown(e, c.id, 'resize')}></div>}
         </div>
     );
   };
@@ -1797,18 +1724,10 @@ const App = () => {
 
   return (
     <div className="app-container">
-      <SettingsModal 
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
-        onExport={handleExportKeyTemplate}
-        onImport={handleImportKeys}
-        loadedServices={Object.keys(apiKeys)}
-        error={error}
-        clearError={() => setError(null)}
-      />
+      {/* FIX: SettingsModal removed to comply with API key guidelines requiring environment variables. */}
 
       {contextMenu.visible && (
-        <div className="context-menu" style={{ top: contextMenu.y, left: contextMenu.x }} onMouseDown={e => e.stopPropagation()}>
+        <div className="context-menu" style={{ top: contextMenu.y, left: contextMenu.x }} onPointerDown={e => e.stopPropagation()}>
           <div className="context-menu-item-header">CyberForm v1.0.0</div>
           <div className="context-menu-item-info">By Elton Boehnen</div>
           <div className="context-menu-separator"></div>
@@ -1870,14 +1789,13 @@ const App = () => {
         <div 
             className="canvas-container"
             ref={canvasRef}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
+            onPointerMove={handlePointerMoveOnCanvas}
             onContextMenu={handleContextMenu}
         >
           <div className="hud">
               <div className="hud-left">
-                <span className={`hud-coords ${isMouseInForm ? 'valid' : 'invalid'}`}>
-                  X: {mousePos.x.toFixed(0)}, Y: {mousePos.y.toFixed(0)}
+                <span className={`hud-coords ${isPointerInForm ? 'valid' : 'invalid'}`}>
+                  X: {pointerPos.x.toFixed(0)}, Y: {pointerPos.y.toFixed(0)}
                 </span>
               </div>
               <div className="hud-right">
@@ -1886,14 +1804,14 @@ const App = () => {
                 <button className={`hud-button ${isFormLocked ? 'active' : ''}`} title={isFormLocked ? 'Unlock Form Position' : 'Lock Form Position'} onClick={() => setIsFormLocked(v => !v)}>
                   {isFormLocked ? <LockIcon /> : <UnlockIcon />}
                 </button>
-                <button className={`hud-button`} title="Settings" onClick={() => setIsSettingsModalOpen(true)}><SettingsIcon /></button>
+                {/* FIX: Settings button removed to comply with API key guidelines. */}
               </div>
           </div>
 
           <div 
             id={currentForm.id}
             className={`form-grid ${!isFormLocked ? 'draggable' : ''} ${isGridVisible ? 'grid-visible' : ''}`}
-            onMouseDown={(e) => handleMouseDown(e, currentForm.id)}
+            onPointerDown={(e) => handlePointerDown(e, currentForm.id, 'move')}
             style={{ 
               transform: `translate(${currentForm.properties.Location.X}px, ${currentForm.properties.Location.Y}px)`,
               width: currentForm.properties.Size.Width,
@@ -1913,7 +1831,7 @@ const App = () => {
         </div>
         
         <div className="bottom-panel" style={{ height: panelHeight }}>
-          <div className="panel-resizer" onMouseDown={handlePanelResizeMouseDown}></div>
+          <div className="panel-resizer" onPointerDown={handlePanelResizePointerDown}></div>
           <nav className="tab-nav">
               <button className={`cyber-tab ${activeTab === 'properties' ? 'active' : ''}`} onClick={() => setActiveTab('properties')}>Properties</button>
               <button className={`cyber-tab ${activeTab === 'events' ? 'active' : ''}`} onClick={() => setActiveTab('events')} disabled={!isSingleControlSelected}>Events</button>

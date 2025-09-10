@@ -1,11 +1,14 @@
 import { GoogleGenAI } from "@google/genai";
 
-export const enhanceCodeWithAI = async (prompt: string, language: 'powershell' | 'python', apiKey: string): Promise<string> => {
-    if (!apiKey) {
-      throw new Error("Google Gemini API key is missing. Please import it via the settings menu.");
+// FIX: Removed apiKey parameter and now sourcing from environment variables per guidelines.
+export const enhanceCodeWithAI = async (prompt: string, language: 'powershell' | 'python'): Promise<string> => {
+    // FIX: API key must come from environment variables.
+    if (!process.env.API_KEY) {
+      throw new Error("Google Gemini API key is not configured. Please set the API_KEY environment variable.");
     }
     
-    const ai = new GoogleGenAI({ apiKey });
+    // FIX: Initialize with API key from environment variables.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const languageName = language.charAt(0).toUpperCase() + language.slice(1);
 
     try {

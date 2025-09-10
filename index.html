@@ -43,9 +43,9 @@
     .app-container { display: flex; height: 100vh; width: 100vw; }
     .left-panel { width: 260px; background: var(--panel-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 1rem; gap: 1rem; overflow-y: auto; transition: transform 0.3s ease-in-out; }
     .main-content { flex: 1; display: flex; flex-direction: column; }
-    .canvas-container { flex: 1; position: relative; background: radial-gradient(ellipse at center, rgba(57, 255, 20, 0.1), transparent 70%); }
+    .canvas-container { flex: 1; position: relative; background: radial-gradient(ellipse at center, rgba(57, 255, 20, 0.1), transparent 70%); touch-action: none; }
     .bottom-panel { background: var(--panel-bg); border-top: 1px solid var(--border-color); display: flex; flex-direction: column; flex-shrink: 0; }
-    .panel-resizer { height: 5px; cursor: ns-resize; background-color: var(--border-color); transition: background-color 0.2s; }
+    .panel-resizer { height: 5px; cursor: ns-resize; background-color: var(--border-color); transition: background-color 0.2s; touch-action: none; }
     .panel-resizer:hover { background-color: var(--primary-color); }
     .hud { position: absolute; top: 0; left: 0; right: 0; height: 30px; background: rgba(0,0,0,0.5); z-index: 10; display: flex; justify-content: space-between; align-items: center; padding: 0 1rem; font-size: 0.9rem; pointer-events: none; }
     .hud-left, .hud-right { display: flex; gap: 1rem; align-items: center; }
@@ -314,12 +314,13 @@
         box-shadow: 0 0 8px var(--primary-color);
         z-index: 1;
         transition: background-color 0.2s;
+        touch-action: none;
     }
     .splitcontainer-splitter:hover {
       background: var(--secondary-color);
     }
 
-    .resize-handle { position: absolute; width: 12px; height: 12px; right: -6px; bottom: -6px; background: var(--primary-color); cursor: se-resize; z-index: 1001; border: 1px solid var(--bg-color); }
+    .resize-handle { position: absolute; width: 16px; height: 16px; right: -8px; bottom: -8px; background: var(--primary-color); cursor: se-resize; z-index: 1001; border: 1px solid var(--bg-color); }
     .resize-handle:hover { box-shadow: 0 0 8px var(--primary-color); }
     
     /* --- Canvas Menu Bar --- */

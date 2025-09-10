@@ -80,6 +80,4 @@ export interface Ripple {
   type: 'ripple' | 'wormhole';
 }
 
-export interface ApiKeyMap {
-  [service: string]: string;
-}
+// FIX: Removed ApiKeyMap as API key management via UI is disallowed.
