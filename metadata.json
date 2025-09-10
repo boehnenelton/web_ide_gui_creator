@@ -1,5 +1,0 @@
-{
-  "name": "Web-IDE GUI Creator - Powershell and Python",
-  "description": "A visual web-based IDE for creating cross-platform GUI applications for PowerShell (WinForms) and Python (Tkinter). Features a drag-and-drop canvas, component properties editor, and real-time code generation.",
-  "requestFramePermissions": []
-}
